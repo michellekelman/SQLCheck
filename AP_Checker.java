@@ -1,20 +1,9 @@
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 
 // Config, PatternType, and RiskLevel enums from different files.
-
-class Checker_Stat {
-    public int errorLevelCounter = 0;
-    public int warnLevelCounter = 0;
-    public int infoLevelCounter = 0;
-    public int debugLevelCounter = 0;
-    public int traceLevelCounter = 0;
-    public int allLevelCounter = 0;
-}
-
 
 public class AP_Checker {
     //UTILITY
