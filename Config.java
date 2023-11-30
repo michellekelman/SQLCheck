@@ -1,6 +1,4 @@
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.io.ByteArrayInputStream;
 
 public class Config {
     public boolean colorMode = true;
@@ -8,9 +6,9 @@ public class Config {
     public String delimiter = ";";
     public RiskLevel riskLevel = RiskLevel.RISK_LEVEL_ALL;
     public boolean verbose = false;
-    public Optional<String> testStream = Optional.empty();
+    public ByteArrayInputStream testStream;
     public boolean testingMode = false;
-    public Map<Integer, Integer> checkerStats = new HashMap<>();
+    public Checker_Stats checkerStats = new Checker_Stats();
     public int lineNumber;
 
     public boolean isColorMode() {
@@ -53,11 +51,11 @@ public class Config {
         this.verbose = verbose;
     }
 
-    public Optional<String> getTestStream() {
+    public ByteArrayInputStream getTestStream() {
         return testStream;
     }
 
-    public void setTestStream(Optional<String> testStream) {
+    public void setTestStream(ByteArrayInputStream testStream) {
         this.testStream = testStream;
     }
 
@@ -69,11 +67,11 @@ public class Config {
         this.testingMode = testingMode;
     }
 
-    public Map<Integer, Integer> getCheckerStats() {
+    public Checker_Stats getCheckerStats() {
         return checkerStats;
     }
 
-    public void setCheckerStats(Map<Integer, Integer> checkerStats) {
+    public void setCheckerStats(Checker_Stats checkerStats) {
         this.checkerStats = checkerStats;
     }
 
@@ -83,6 +81,25 @@ public class Config {
 
     public void setLineNumber(int lineNumber) {
         this.lineNumber = lineNumber;
+    }
+
+    public static RiskLevel intToRiskLevel(int value) {
+        switch (value) {
+            case 1:
+                return RiskLevel.RISK_LEVEL_ALL;
+            case 2:
+                return RiskLevel.RISK_LEVEL_HIGH;
+            case 3:
+                return RiskLevel.RISK_LEVEL_MEDIUM;
+            case 4:
+                return RiskLevel.RISK_LEVEL_LOW;
+            case 5:
+                return RiskLevel.RISK_LEVEL_NONE;
+            case 10:
+                return RiskLevel.RISK_LEVEL_INVALID;
+            default:
+                throw new IllegalArgumentException("Invalid risk level value: " + value);
+        }
     }
 
     public static String riskLevelToString(RiskLevel riskLevel) {
