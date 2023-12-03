@@ -70,7 +70,9 @@ public class main {
     private static Map<String, String> parseArgs(String[] args) {
         Map<String, String> options = new HashMap<>();
         for (int i = 0; i < args.length - 1; i += 2) {
-            options.put(args[i], args[i + 1]);
+            if (args[i].charAt(0) == '-') {
+                options.put(args[i].substring(1,args[i].length()), args[i + 1]);
+            }
         }
         return options;
     }

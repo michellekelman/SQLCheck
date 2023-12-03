@@ -156,7 +156,7 @@ public class Config {
     }
 
     public static void validateRiskLevel(Config state) {
-        if (state.getRiskLevel().ordinal() < RiskLevel.RISK_LEVEL_ALL.ordinal() || state.getRiskLevel().ordinal() > RiskLevel.RISK_LEVEL_HIGH.ordinal()) {
+        if (state.getRiskLevel().getLevel() < RiskLevel.RISK_LEVEL_ALL.getLevel() || state.getRiskLevel().getLevel() > RiskLevel.RISK_LEVEL_HIGH.getLevel()) {
             System.out.println("INVALID RISK LEVEL :: " + state.getRiskLevel());
             System.exit(1);
         } else {

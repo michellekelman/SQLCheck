@@ -121,9 +121,9 @@ public class Checker {
         return wrapped.toString();
     }
 
-    public void printMessage(Config state, String sqlStatement, boolean printStatement,
-                             RiskLevel patternRiskLevel, PatternType patternType,
-                             String title, String message) {
+    public static void printMessage(Config state, String sqlStatement, boolean printStatement,
+                                    RiskLevel patternRiskLevel, PatternType patternType,
+                                    String title, String message) {
 
         ColorModifier red = new ColorModifier(ColorCode.FG_RED, state.isColorMode(), true);
         ColorModifier green = new ColorModifier(ColorCode.FG_GREEN, state.isColorMode(), true);
@@ -176,43 +176,88 @@ public class Checker {
         state.checkerStats.setAllLevelCounter(state.checkerStats.getAllLevelCounter()+1);
     }
 
-    void checkPattern(Config state, String sqlStatement, boolean printStatement,
-                      Pattern antiPattern, RiskLevel patternRiskLevel, PatternType patternType,
-                      String title, String message, boolean exists, int minCount) {
+    public static void noMinCheckPattern(Config state, String sqlStatement, boolean printStatement,
+                                    Pattern antiPattern, RiskLevel patternRiskLevel, PatternType patternType,
+                                    String title, String message, boolean exists) {
 
         // Check log level
-        if (patternRiskLevel.ordinal() < state.getRiskLevel().ordinal()) {
+        if (patternRiskLevel.getLevel() < state.getRiskLevel().getLevel()) {
             return;
         }
 
         boolean found = false;
         Matcher matcher = antiPattern.matcher(sqlStatement);
         ArrayList<Integer> positions = new ArrayList<>();
-        int count = 0;
+        ArrayList<String> violations = new ArrayList<>();
 
         try {
             while (matcher.find()) {
-                count++;
                 found = true;
                 positions.add(matcher.start());
+                violations.add(matcher.group(1));
             }
 
-            if (found == exists && count > minCount) {
-                ArrayList<Integer> lineLocations = convertToLineNumbers(sqlStatement, positions, state.getLineNumber());
+            if (found == exists) {
 
                 // Print message
                 printMessage(state, sqlStatement, printStatement, patternRiskLevel, patternType, title, message);
 
                 if (exists) {
-                    String matchingExpression = matcher.group(0);
-                    String lineLocationString = buildLineLocationString(lineLocations);
+                    String matchingExpression = violations.get(0);
 
                     if (state.isColorMode()) {
                         System.out.print("[Matching Expression: \033[34m" + wrapText(matchingExpression) +
-                                "\033[0m" + lineLocationString + "]");
+                                "\033[0m" + "]");
                     } else {
-                        System.out.print("[Matching Expression: " + wrapText(matchingExpression) +
-                                lineLocationString + "]");
+                        System.out.print("[Matching Expression: " + wrapText(matchingExpression) + "]");
+                    }
+                    System.out.println("\n\n");
+
+                    // TOGGLE PRINT STATEMENT
+                    printStatement = false;
+                }
+            }
+        } catch (Exception e) {
+            // Syntax error in the regular expression
+            System.out.println(e);
+        }
+    }
+
+    public static void checkPattern(Config state, String sqlStatement, boolean printStatement,
+                             Pattern antiPattern, RiskLevel patternRiskLevel, PatternType patternType,
+                             String title, String message, boolean exists, int minCount) {
+
+        // Check log level
+        if (patternRiskLevel.getLevel() < state.getRiskLevel().getLevel()) {
+            return;
+        }
+
+        boolean found = false;
+        Matcher matcher = antiPattern.matcher(sqlStatement);
+        ArrayList<Integer> positions = new ArrayList<>();
+        ArrayList<String> violations = new ArrayList<>();
+        int count = 0;
+
+        try {
+            while (matcher.find()) {
+                found = true;
+                positions.add(matcher.start());
+                violations.add(matcher.group(1));
+            }
+
+            if (found == exists && count > minCount) {
+
+                // Print message
+                printMessage(state, sqlStatement, printStatement, patternRiskLevel, patternType, title, message);
+
+                if (exists) {
+                    String matchingExpression = violations.get(0);
+
+                    if (state.isColorMode()) {
+                        System.out.print("[Matching Expression: \033[34m" + wrapText(matchingExpression) +
+                                "\033[0m" + "]");
+                    } else {
+                        System.out.print("[Matching Expression: " + wrapText(matchingExpression) + "]");
                     }
                     System.out.println("\n\n");
 
@@ -290,7 +335,7 @@ public class Checker {
         state.setLineNumber(state.getLineNumber() + count);
     }
 
-    private ArrayList<Integer> convertToLineNumbers(String sqlStatement, ArrayList<Integer> positions, int lineNumber) {
+    private static ArrayList<Integer> convertToLineNumbers(String sqlStatement, ArrayList<Integer> positions, int lineNumber) {
         ArrayList<Integer> lineLocations = new ArrayList<>();
         int statementChar = 0;
         int positionChecker = 0;
@@ -311,7 +356,7 @@ public class Checker {
         return lineLocations;
     }
 
-    private String buildLineLocationString(ArrayList<Integer> lineLocations) {
+    private static String buildLineLocationString(ArrayList<Integer> lineLocations) {
         StringBuilder lineLocationString = new StringBuilder();
         lineLocationString.append(lineLocations.size() > 1 ? " at lines " : " at line ");
 

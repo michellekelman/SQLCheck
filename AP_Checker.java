@@ -6,6 +6,33 @@ import java.util.regex.Pattern;
 // Config, PatternType, and RiskLevel enums from different files.
 
 public class AP_Checker {
+    static String whitespace_chars =  ""       /* dummy empty string for homogeneity */
+        + "\\u0009" // CHARACTER TABULATION
+        + "\\u000A" // LINE FEED (LF)
+        + "\\u000B" // LINE TABULATION
+        + "\\u000C" // FORM FEED (FF)
+        + "\\u000D" // CARRIAGE RETURN (CR)
+        + "\\u0020" // SPACE
+        + "\\u0085" // NEXT LINE (NEL)
+        + "\\u00A0" // NO-BREAK SPACE
+        + "\\u1680" // OGHAM SPACE MARK
+        + "\\u180E" // MONGOLIAN VOWEL SEPARATOR
+        + "\\u2000" // EN QUAD
+        + "\\u2001" // EM QUAD
+        + "\\u2002" // EN SPACE
+        + "\\u2003" // EM SPACE
+        + "\\u2004" // THREE-PER-EM SPACE
+        + "\\u2005" // FOUR-PER-EM SPACE
+        + "\\u2006" // SIX-PER-EM SPACE
+        + "\\u2007" // FIGURE SPACE
+        + "\\u2008" // PUNCTUATION SPACE
+        + "\\u2009" // THIN SPACE
+        + "\\u200A" // HAIR SPACE
+        + "\\u2028" // LINE SEPARATOR
+        + "\\u2029" // PARAGRAPH SEPARATOR
+        + "\\u202F" // NARROW NO-BREAK SPACE
+        + "\\u205F" // MEDIUM MATHEMATICAL SPACE
+        + "\\u3000"; // IDEOGRAPHIC SPACE
     //UTILITY
     public static String getTableName(String sqlStatement) {
         String tableTemplate = "create table";
@@ -47,45 +74,10 @@ public class AP_Checker {
         return found != -1;
     }
 
-    public static void checkPattern(Config state, String sqlStatement, boolean printStatement, Pattern antiPattern, RiskLevel patternRiskLevel, PatternType patternType, String title, String message, boolean exists) {
-        if (patternRiskLevel.ordinal() < state.getRiskLevel().ordinal()) {
-            return;
-        }
-
-        boolean found = false;
-        Matcher matcher = antiPattern.matcher(sqlStatement);
-        List<Integer> positions = new ArrayList<>();
-
-        while (matcher.find()) {
-            found = true;
-            positions.add(matcher.start());
-        }
-    }
-
-    public static void checkPattern(Config state, String sqlStatement, boolean printStatement, Pattern antiPattern, RiskLevel patternRiskLevel, PatternType patternType, String title, String message, boolean exists, int minCount) {
-        if (patternRiskLevel.ordinal() < state.getRiskLevel().ordinal()) {
-            return;
-        }
-
-        boolean found = false;
-        Matcher matcher = antiPattern.matcher(sqlStatement);
-        int count = 0;
-        List<Integer> positions = new ArrayList<>();
-
-        while (matcher.find()) {
-            count++;
-            found = true;
-            positions.add(matcher.start());
-        }
-
-        if (found == exists && count > minCount) {
-        }
-    }
-
     // LOGICAL DATABASE DESIGN
 
     public static void checkMultiValuedAttribute(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("(id\\s+varchar)|(id\\s+text)|(id\\s+regexp)");
+        Pattern pattern = Pattern.compile("(id"+whitespace_chars+"varchar)|(id"+whitespace_chars+"+text)|(id"+whitespace_chars+"+regexp)", Pattern.CASE_INSENSITIVE);
         String title = "Multi-Valued Attribute";
         PatternType patternType = PatternType.PATTERN_TYPE_LOGICAL_DATABASE_DESIGN;
 
@@ -100,7 +92,7 @@ public class AP_Checker {
                 + "between the two referenced tables. This will greatly simplify querying and validating "
                 + "the IDs.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_HIGH, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_HIGH, patternType, title, message, true);
     }
 
     public static void checkRecursiveDependency(Config state, String sqlStatement, boolean printStatement) {
@@ -110,7 +102,7 @@ public class AP_Checker {
             return;
         }
 
-        Pattern pattern = Pattern.compile("(references\\s+" + tableName + ")");
+        Pattern pattern = Pattern.compile("(references"+whitespace_chars+"+" + tableName + ")", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "Recursive Dependency";
         PatternType patternType = PatternType.PATTERN_TYPE_LOGICAL_DATABASE_DESIGN;
 
@@ -125,7 +117,7 @@ public class AP_Checker {
                 + "You might want to compare different hierarchical data designs -- closure table, "
                 + "path enumeration, nested sets -- and pick one based on your application's needs.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_HIGH, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_HIGH, patternType, title, message, true);
     }
 
     public static void checkPrimaryKeyExists(Config state, String sqlStatement, boolean printStatement) {
@@ -135,7 +127,7 @@ public class AP_Checker {
             return;
         }
 
-        Pattern pattern = Pattern.compile("(primary key)");
+        Pattern pattern = Pattern.compile("(primary key)", Pattern.CASE_INSENSITIVE);
         String title = "Primary Key Does Not Exist";
         PatternType patternType = PatternType.PATTERN_TYPE_LOGICAL_DATABASE_DESIGN;
 
@@ -148,15 +140,7 @@ public class AP_Checker {
                 + "checking for duplicate rows. More often than not, you will need to define "
                 + "a primary key for every table. Use compound keys when they are appropriate.";
 
-        checkPattern(state,
-                sqlStatement,
-                printStatement,
-                pattern,
-                RiskLevel.RISK_LEVEL_MEDIUM,
-                patternType,
-                title,
-                message,
-                false);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, false);
     }
 
     public static void checkGenericPrimaryKey(Config state, String sqlStatement, boolean printStatement) {
@@ -166,7 +150,7 @@ public class AP_Checker {
             return;
         }
 
-        Pattern pattern = Pattern.compile("(\\s+[\\(]?id\\s+)|(,id\\s+)|(\\s+id\\s+serial)");
+        Pattern pattern = Pattern.compile("("+whitespace_chars+"+[\\(]?id"+whitespace_chars+"+)|(,id"+whitespace_chars+"+)|("+whitespace_chars+"+id"+whitespace_chars+"+serial)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "Generic Primary Key";
         PatternType patternType = PatternType.PATTERN_TYPE_LOGICAL_DATABASE_DESIGN;
 
@@ -178,15 +162,7 @@ public class AP_Checker {
                 + "important when you join two tables and they have the same primary "
                 + "key column name.";
 
-        checkPattern(state,
-                sqlStatement,
-                printStatement,
-                pattern,
-                RiskLevel.RISK_LEVEL_HIGH,
-                patternType,
-                title,
-                message,
-                true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_HIGH, patternType, title, message, true);
     }
 
     public static void checkForeignKeyExists(Config state, String sqlStatement, boolean printStatement) {
@@ -196,7 +172,7 @@ public class AP_Checker {
             return;
         }
 
-        Pattern pattern = Pattern.compile("(foreign key)");
+        Pattern pattern = Pattern.compile("(foreign key)", Pattern.CASE_INSENSITIVE);
         String title = "Foreign Key Does Not Exist";
         PatternType patternType = PatternType.PATTERN_TYPE_LOGICAL_DATABASE_DESIGN;
 
@@ -213,7 +189,7 @@ public class AP_Checker {
                 + "in the foreign key constraint allow you to control the result of a cascading "
                 + "operation. Make your database mistake-proof with constraints.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, false);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, false);
     }
 
     public static void checkVariableAttribute(Config state, String sqlStatement, boolean printStatement) {
@@ -228,7 +204,7 @@ public class AP_Checker {
             return;
         }
 
-        Pattern pattern = Pattern.compile("(attribute)");
+        Pattern pattern = Pattern.compile("(attribute)", Pattern.CASE_INSENSITIVE);
         String title = "Entity-Attribute-Value Pattern";
         PatternType patternType = PatternType.PATTERN_TYPE_LOGICAL_DATABASE_DESIGN;
 
@@ -257,7 +233,7 @@ public class AP_Checker {
                 + "This design is best when you can’t limit yourself to a finite set of subtypes "
                 + "and when you need complete flexibility to define new attributes at any time.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message,true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message,true);
     }
 
 
@@ -267,7 +243,7 @@ public class AP_Checker {
             return;
         }
 
-        Pattern pattern = Pattern.compile("[A-za-z\\-_@]+[0-9]+ ");
+        Pattern pattern = Pattern.compile("[A-za-z\\-_@]+[0-9]+ ", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "Metadata Tribbles";
         PatternType patternType = PatternType.PATTERN_TYPE_LOGICAL_DATABASE_DESIGN;
 
@@ -300,14 +276,14 @@ public class AP_Checker {
 
         String message = message1 + "\n" + message2;
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
     }
 
 
     // PHYSICAL DATABASE DESIGN
 
     public static void checkFloat(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("(float)|(real)|(double precision)|(0\\.000[0-9]*)");
+        Pattern pattern = Pattern.compile("(float)|(real)|(double precision)|(0\\.000[0-9]*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "Imprecise Data Type";
         PatternType patternType = PatternType.PATTERN_TYPE_PHYSICAL_DATABASE_DESIGN;
 
@@ -321,7 +297,7 @@ public class AP_Checker {
                 + "exactly, up to the precision you specify in the column definition. "
                 + "Do not use FLOAT if you can avoid it.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
     }
 
     public static void checkValuesInDefinition(Config state, String sqlStatement, boolean printStatement) {
@@ -331,7 +307,7 @@ public class AP_Checker {
             return;
         }
 
-        Pattern pattern = Pattern.compile("( enum)|( in \\()");
+        Pattern pattern = Pattern.compile("( enum)|( in \\()", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "Values In Definition";
         PatternType patternType = PatternType.PATTERN_TYPE_PHYSICAL_DATABASE_DESIGN;
 
@@ -353,11 +329,11 @@ public class AP_Checker {
                 + "Use metadata when validating against a fixed set of values. "
                 + "Use data when validating against a fluid set of values.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
     }
 
     public static void checkExternalFiles(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("(path varchar)|(unlink\\s?\\()");
+        Pattern pattern = Pattern.compile("(path varchar)|(unlink\\s?+\\()", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "Files Are Not SQL Data Types";
         PatternType patternType = PatternType.PATTERN_TYPE_PHYSICAL_DATABASE_DESIGN;
 
@@ -371,7 +347,7 @@ public class AP_Checker {
                 + "You should consider storing blobs inside the database instead of in "
                 + "external files. You can save the contents of a BLOB column to a file.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
     }
 
     public static void checkIndexCount(Config state, String sqlStatement, boolean printStatement) {
@@ -381,7 +357,7 @@ public class AP_Checker {
         }
 
         int minCount = 3;
-        Pattern pattern = Pattern.compile("(index)");
+        Pattern pattern = Pattern.compile("(index)", Pattern.CASE_INSENSITIVE);
         String title = "Too Many Indexes";
         PatternType patternType = PatternType.PATTERN_TYPE_PHYSICAL_DATABASE_DESIGN;
 
@@ -395,7 +371,7 @@ public class AP_Checker {
                 + "rows of data from the table at all. Consider using such covering indexes. "
                 + "Know your data, know your queries, and maintain the right set of indexes.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true, minCount);
+        Checker.checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true, minCount);
     }
 
     public static void checkIndexAttributeOrder(Config state, String sqlStatement, boolean printStatement) {
@@ -412,13 +388,13 @@ public class AP_Checker {
                 + "EX: CREATE INDEX TelephoneBook ON Accounts(last_name, first_name); "
                 + "SELECT * FROM Accounts ORDER BY first_name, last_name;";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
     }
 
     // QUERY
 
     public static void checkSelectStar(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("(select\\s+\\*)");
+        Pattern pattern = Pattern.compile("(select\\s+\\*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "SELECT *";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -454,22 +430,22 @@ public class AP_Checker {
 
         String message = message1 + "\n" + message2 + "\n" + message3;
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_HIGH, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_HIGH, patternType, title, message, true);
     }
 
     public static void checkJoinWithoutEquality(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("join[\\s\\._]?[^=]+?(left|right|join|where|case)");
+        Pattern pattern = Pattern.compile("join["+whitespace_chars+"\\._]?[^=]+?(left|right|join|where|case)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "JOIN Without Equality Check";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
         String message = "● Use = with JOIN: JOIN should always have an equality check to ensure proper scope of records.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_HIGH, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_HIGH, patternType, title, message, true);
     }
 
 
     public static void checkNullUsage(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("(null)");
+        Pattern pattern = Pattern.compile("(null)", Pattern.CASE_INSENSITIVE);
         String title = "NULL Usage";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -483,7 +459,7 @@ public class AP_Checker {
                 + "for the row to exist without a value in that column. "
                 + "Use null to signify a missing value for any data type.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_NONE, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_NONE, patternType, title, message, true);
     }
 
     public static void checkNotNullUsage(Config state, String sqlStatement, boolean printStatement) {
@@ -492,7 +468,7 @@ public class AP_Checker {
             return;
         }
 
-        Pattern pattern = Pattern.compile("(not null)");
+        Pattern pattern = Pattern.compile("(not null)", Pattern.CASE_INSENSITIVE);
         String title = "NOT NULL Usage";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -501,11 +477,11 @@ public class AP_Checker {
                 + "for the row to exist without a value in that column. "
                 + "Use null to signify a missing value for any data type.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_NONE, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_NONE, patternType, title, message, true);
     }
 
     public static void checkConcatenation(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("\\|\\|");
+        Pattern pattern = Pattern.compile("\\|\\|", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "String Concatenation";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -517,7 +493,7 @@ public class AP_Checker {
                 + "EX: SELECT first_name || COALESCE(' ' || middle_initial || ' ', ' ') || last_name "
                 + "AS full_name FROM Accounts;";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
     }
 
     public static void checkGroupByUsage(Config state, String sqlStatement, boolean printStatement) {
@@ -537,11 +513,11 @@ public class AP_Checker {
                 + "aggregate function or the GROUP BY clause. "
                 + "Follow the single-value rule to avoid ambiguous query results.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
     }
 
     public static void checkOrderByRand(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("(order by rand\\()", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("(order by rand\\()", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "ORDER BY RAND Usage";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -560,11 +536,11 @@ public class AP_Checker {
                         + "the count. Then use this number as an offset when querying the data set. "
                         + "Some queries just cannot be optimized; consider taking a different approach.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
     }
 
     public static void checkPatternMatching(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("(\\blike\\b)|(\\bregexp\\b)|(\\bsimilar to\\b)", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("(\blike\b)|(\bregexp\b)|(\bsimilar to\b)", Pattern.CASE_INSENSITIVE);
         String title = "Pattern Matching Usage";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -578,12 +554,12 @@ public class AP_Checker {
                         + "Consider using vendor extensions like FULLTEXT INDEX in MySQL. "
                         + "More broadly, you don't have to use SQL to solve every problem.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_MEDIUM, patternType, title, message, true);
     }
 
     public static void checkSpaghettiQuery(Config state, String sqlStatement, boolean printStatement) {
         Pattern truePattern = Pattern.compile(".+?");
-        Pattern falsePattern = Pattern.compile("pattern must not exist");
+        Pattern falsePattern = Pattern.compile("pattern must not exist", Pattern.CASE_INSENSITIVE);
         Pattern pattern;
 
         String title = "Spaghetti Query Alert";
@@ -619,11 +595,11 @@ public class AP_Checker {
                         + "Although SQL makes it seem possible to solve a complex problem in a single line of code, "
                         + "don't be tempted to build a house of cards.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
     }
 
     public static void checkJoinCount(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("\\bjoin\\b");
+        Pattern pattern = Pattern.compile("\bjoin\b", Pattern.CASE_INSENSITIVE);
         String title = "Reduce Number of JOINs";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
         int minCount = 5;
@@ -633,11 +609,11 @@ public class AP_Checker {
                         + "Too many JOINs is a symptom of complex spaghetti queries. Consider splitting "
                         + "up the complex query into many simpler queries, and reduce the number of JOINs";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true, minCount);
+        Checker.checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true, minCount);
     }
 
     public static void checkDistinctCount(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("\\bdistinct\\b");
+        Pattern pattern = Pattern.compile("\bdistinct\b", Pattern.CASE_INSENSITIVE);
         String title = "Eliminate Unnecessary DISTINCT Conditions";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
         int minCount = 5;
@@ -650,11 +626,11 @@ public class AP_Checker {
                         + "It is possible that the DISTINCT condition has no effect if a primary key "
                         + "column is part of the result set of columns";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true, minCount);
+        Checker.checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true, minCount);
     }
 
     public static void checkImplicitColumns(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("insert into \\S+ values");
+        Pattern pattern = Pattern.compile("insert into "+whitespace_chars+"+ values", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
         String title = "Implicit Column Usage";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -666,11 +642,11 @@ public class AP_Checker {
                         + "Always spell out all the columns you need, instead of relying on "
                         + "wild-cards or implicit column lists.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
     }
 
     public static void checkHaving(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("\\bhaving\\b");
+        Pattern pattern = Pattern.compile("\bhaving\b", Pattern.CASE_INSENSITIVE);
         String title = "HAVING Clause Usage";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -683,11 +659,11 @@ public class AP_Checker {
                         + "SELECT s.cust_id,count(cust_id) FROM SH.sales s WHERE s.cust_id != '1660' "
                         + "AND s.cust_id !='2' GROUP BY s.cust_id;";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
     }
 
     public static void checkNesting(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("\\bselect\\b");
+        Pattern pattern = Pattern.compile("\bselect\b", Pattern.CASE_INSENSITIVE);
         String title = "Nested sub queries";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
         int minCount = 2;
@@ -706,11 +682,11 @@ public class AP_Checker {
                         + "SELECT p.* FROM SH.products p, sales s WHERE p.prod_id = s.prod_id AND "
                         + "s.cust_id = 100996 AND s.quantity_sold = 1;";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true, minCount);
+        Checker.checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true, minCount);
     }
 
     public static void checkOr(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("\\bor\\b");
+        Pattern pattern = Pattern.compile("\bor\b", Pattern.CASE_INSENSITIVE);
         String title = "OR Usage";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -725,11 +701,11 @@ public class AP_Checker {
                         + "can be rewritten as:  "
                         + "SELECT s.* FROM SH.sales s WHERE s.prod_id IN (14, 17);";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
     }
 
     public static void checkUnion(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("(union)");
+        Pattern pattern = Pattern.compile("(union)", Pattern.CASE_INSENSITIVE);
         String title = "UNION Usage";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -739,11 +715,11 @@ public class AP_Checker {
                         + "If you do not care about duplicate tuples, then using UNION ALL would be "
                         + "a faster option.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
     }
 
     public static void checkDistinctJoin(Config state, String sqlStatement, boolean printStatement) {
-        Pattern pattern = Pattern.compile("(distinct.*join)");
+        Pattern pattern = Pattern.compile("(distinct.*join)", Pattern.CASE_INSENSITIVE);
         String title = "DISTINCT & JOIN Usage";
         PatternType patternType = PatternType.PATTERN_TYPE_QUERY;
 
@@ -758,14 +734,14 @@ public class AP_Checker {
                         + "SELECT c.country_id, c.country_name FROM SH.countries c WHERE  EXISTS "
                         + "(SELECT 'X' FROM  SH.customers e WHERE e.country_id = c.country_id);";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
     }
 
     // APPLICATION
 
     public static void checkReadablePasswords(Config state, String sqlStatement, boolean printStatement) {
         Pattern pattern = Pattern.compile("(password varchar)|(password text)|(password =)| "
-                + "(pwd varchar)|(pwd text)|(pwd =)");
+                + "(pwd varchar)|(pwd text)|(pwd =)", Pattern.CASE_INSENSITIVE);
         String title = "Readable Passwords";
         PatternType patternType = PatternType.PATTERN_TYPE_APPLICATION;
 
@@ -784,7 +760,7 @@ public class AP_Checker {
                         + "into the SQL query. Instead, compute the hash in your application code, "
                         + "and use only the hash in the SQL query.";
 
-        checkPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
+        Checker.noMinCheckPattern(state, sqlStatement, printStatement, pattern, RiskLevel.RISK_LEVEL_LOW, patternType, title, message, true);
     }
 
 }
